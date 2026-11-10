@@ -41,7 +41,10 @@ mlruns/
 .DS_Store
 Thumbs.db
 .idea/
-.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/extensions.json
 
 # Local-only files
 *.local.*

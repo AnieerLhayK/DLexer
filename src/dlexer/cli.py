@@ -16,6 +16,7 @@ from dlexer.gpu import GpuCheck, run_gpu_checks
 from dlexer.training import run_smoke
 
 _SCHEMA_VERSION = 1
+_DOCTOR_SCHEMA_VERSION = 2
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -28,7 +29,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     doctor = subparsers.add_parser(
         "doctor",
-        help="inspect Python, CUDA, toolchain and network connectivity",
+        help="inspect Python, CUDA and network connectivity",
     )
     doctor.add_argument("--json", action="store_true", help="print a machine-readable report")
     doctor.add_argument("--no-network", action="store_true", help="skip outbound network probes")
@@ -71,18 +72,6 @@ def _diagnose(
     if gpu.available and gpu.max_abs_diff is not None and gpu.max_abs_diff > 1e-2:
         errors.append(f"GPU matmul mismatch: max abs diff {gpu.max_abs_diff:.3e}")
 
-    if sys.platform == "win32":
-        if not env.toolchain.msvc_installed:
-            warnings.append(
-                "MSVC build tools not found; custom CUDA extensions cannot be compiled"
-            )
-        elif not env.toolchain.cl_on_path:
-            warnings.append(
-                "MSVC is installed but cl.exe is not on PATH; use a Developer PowerShell"
-            )
-    if not env.toolchain.ninja:
-        warnings.append("ninja not found; CUDA extension builds may fall back to setuptools")
-
     for probe in network:
         if not probe.ok:
             detail = probe.detail or "unknown error"
@@ -106,12 +95,11 @@ def _build_doctor_report(args: argparse.Namespace) -> tuple[dict[str, Any], int]
             errors.append(f"--require-network: probes failed: {', '.join(failures)}")
 
     report = {
-        "schema_version": _SCHEMA_VERSION,
+        "schema_version": _DOCTOR_SCHEMA_VERSION,
         "ok": not errors,
         "python": asdict(env.python),
         "packages": env.packages,
         "cuda": asdict(env.cuda),
-        "toolchain": asdict(env.toolchain),
         "gpu_smoke": asdict(gpu),
         "network": [asdict(probe) for probe in network],
         "warnings": warnings,
@@ -131,7 +119,6 @@ def _print_doctor(report: dict[str, Any]) -> None:
     packages = report["packages"]
     cuda = report["cuda"]
     gpu = report["gpu_smoke"]
-    toolchain = report["toolchain"]
 
     print(f"DLexer doctor {__version__}")
     print()
@@ -161,14 +148,6 @@ def _print_doctor(report: dict[str, Any]) -> None:
         print(f"  memory       {gpu['memory_free_mb']} / {gpu['memory_total_mb']} MB free")
     else:
         print("  matmul       skipped (no CUDA device)")
-    print()
-    print("[toolchain]")
-    nvcc = toolchain["nvcc"] or "missing"
-    nvcc_version = toolchain["nvcc_version"] or "unknown"
-    print(f"  nvcc         {nvcc} ({nvcc_version})")
-    print(f"  cuda_home    {toolchain['cuda_home'] or 'missing'}")
-    print(f"  msvc         {'installed' if toolchain['msvc_installed'] else 'missing'}")
-    print(f"  ninja        {'found' if toolchain['ninja'] else 'missing'}")
     print()
     print("[network]")
     network = report["network"]

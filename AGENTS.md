@@ -1,12 +1,12 @@
 # DLexer 项目规则
 
-本仓库是个人 PyTorch 学习工作区，独立于 `D:\AI\workspace` 的治理体系；Workspace 不是本仓库的源码目录，本项目也不要求 Workspace TASK。先检查 Git 状态，保留用户已有修改。
+本仓库是登记于 Workspace 的独立个人 Python/PyTorch 架构学习项目。Workspace 不是本仓库源码目录；通过 Workspace 执行写入时遵守相应 TASK 和授权规则。先检查 Git 状态，保留用户已有修改。
 
 ## 环境
 
-1. 只使用 conda 环境 `ai`：`D:\CODER\python\anaconda\envs\ai\python.exe`（Python 3.11.15）。不要创建 venv 或新的 conda 环境。
-2. 依赖变更必须先获得用户明确同意。当前 torch 固定为 `2.14.1+cu130`、torchvision `0.29.1+cu130`；不要用 CPU wheel 覆盖。
-3. 本仓库的 editable 安装使用 `python -m pip install -e . --no-deps`，避免 pip 重新解析或替换 torch。
+1. 使用 conda 环境 `dlexer`：`D:\CODER\python\anaconda\envs\dlexer\python.exe`。Python 和其他依赖独立；PyTorch 文件通过 junction 共享自 `ai`，见 `docs/environment.md`。
+2. 依赖变更先说明目的和影响；不要在 `ai` 或 `dlexer` 中卸载、覆盖或升级共享的 PyTorch，直到解除 junction 并确认安装方案。
+3. 课程实现使用 Python 和 PyTorch；GPU 通过 PyTorch 使用，不编写 C++ 或 CUDA 扩展。
 4. 常用命令：
    - `python -m pytest -q`
    - `python -m ruff check .`
@@ -15,7 +15,7 @@
 
 ## 教学与审查
 
-1. 默认先讲解概念、公式、形状和失败模式，再让学习者自己写 `lab.py`。除非用户明确要求，不直接给完整实现。
+1. 学习者熟悉 C++，Python 是初学者；直接学习架构，遇到 Python 语法时解释。先讲解概念、公式、形状和失败模式，再让学习者自己写 `lab.py`。默认先提示，用户明确要求时才给代码片段或修改。
 2. 审查顺序：正确性 → 形状/dtype/device → 梯度 → 数值稳定性 → 性能 → 测试与文档。
 3. 审查先说明问题与原因，再给最小 patch；保留学习者代码风格，不趁机重写整个文件。
 4. 每一课以 `lessons/NN_name/README.md` 的验收标准为准；测试是完成门槛，不通过不宣布完成。

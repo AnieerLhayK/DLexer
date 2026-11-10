@@ -1,10 +1,9 @@
-"""Environment and toolchain inspection for the DLexer workspace."""
+"""Environment inspection for the DLexer workspace."""
 
 from __future__ import annotations
 
 import os
 import platform
-import re
 import shutil
 import subprocess
 import sys
@@ -15,8 +14,6 @@ from pathlib import Path
 from typing import Any
 
 _PACKAGE_NAMES = ("torch", "torchvision", "numpy", "transformers", "pytest")
-_NVCC_RELEASE_RE = re.compile(r"release\s+(\d+\.\d+)")
-_VSWHERE = Path(r"C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe")
 
 
 @dataclass(frozen=True)
@@ -47,22 +44,10 @@ class CudaInfo:
 
 
 @dataclass(frozen=True)
-class ToolchainInfo:
-    nvcc: str | None
-    nvcc_version: str | None
-    cuda_home: str | None
-    msvc_installed: bool
-    msvc_path: str | None
-    cl_on_path: bool
-    ninja: bool
-
-
-@dataclass(frozen=True)
 class EnvironmentReport:
     python: PythonInfo
     packages: dict[str, str | None]
     cuda: CudaInfo
-    toolchain: ToolchainInfo
 
 
 def _package_version(name: str) -> str | None:
@@ -111,62 +96,6 @@ def get_driver_version() -> str | None:
     if code != 0 or not output:
         return None
     return output.splitlines()[0].strip() or None
-
-
-def _get_nvcc() -> tuple[str | None, str | None]:
-    exe = shutil.which("nvcc")
-    if exe is None:
-        return None, None
-    code, output = _run_capture([exe, "--version"], timeout=10.0)
-    match = _NVCC_RELEASE_RE.search(output) if code == 0 else None
-    return exe, match.group(1) if match else None
-
-
-def _get_cuda_home(torch_module: Any) -> str | None:
-    try:
-        from torch.utils.cpp_extension import CUDA_HOME
-
-        if CUDA_HOME:
-            return str(CUDA_HOME)
-    except Exception:
-        pass
-    env_value = os.environ.get("CUDA_HOME") or os.environ.get("CUDA_PATH")
-    return env_value or None
-
-
-def _msvc_installation() -> str | None:
-    if not _VSWHERE.is_file():
-        return None
-    code, output = _run_capture(
-        [
-            str(_VSWHERE),
-            "-latest",
-            "-products",
-            "*",
-            "-requires",
-            "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
-            "-property",
-            "installationPath",
-        ],
-        timeout=15.0,
-    )
-    if code != 0 or not output:
-        return None
-    return output.splitlines()[0].strip() or None
-
-
-def _collect_toolchain(torch_module: Any) -> ToolchainInfo:
-    nvcc, nvcc_version = _get_nvcc()
-    msvc_path = _msvc_installation()
-    return ToolchainInfo(
-        nvcc=nvcc,
-        nvcc_version=nvcc_version,
-        cuda_home=_get_cuda_home(torch_module),
-        msvc_installed=msvc_path is not None,
-        msvc_path=msvc_path,
-        cl_on_path=shutil.which("cl") is not None,
-        ninja=shutil.which("ninja") is not None,
-    )
 
 
 def _collect_cuda(torch_module: Any) -> CudaInfo:
@@ -224,7 +153,7 @@ def _collect_cuda(torch_module: Any) -> CudaInfo:
 
 
 def collect_environment() -> EnvironmentReport:
-    """Collect the current Python, PyTorch, CUDA and toolchain state."""
+    """Collect the current Python, PyTorch and CUDA state."""
     try:
         import torch
     except Exception as exc:  # pragma: no cover - environment dependent
@@ -238,7 +167,6 @@ def collect_environment() -> EnvironmentReport:
         ),
         packages={name: _package_version(name) for name in _PACKAGE_NAMES},
         cuda=_collect_cuda(torch),
-        toolchain=_collect_toolchain(torch),
     )
 
 

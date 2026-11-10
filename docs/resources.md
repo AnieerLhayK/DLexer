@@ -14,7 +14,6 @@
 - 官方教程：<https://pytorch.org/tutorials/>
 - Autograd 机制：<https://pytorch.org/docs/stable/notes/autograd.html>
 - CUDA 语义：<https://pytorch.org/docs/stable/notes/cuda.html>
-- 自定义 C++/CUDA 扩展：<https://pytorch.org/docs/stable/cpp_extension.html>
 - 官方示例：<https://github.com/pytorch/examples>
 
 ## 经典架构

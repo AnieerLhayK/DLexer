@@ -1,99 +1,38 @@
-# 环境说明
+# 环境与 VS Code
 
-## 机器
+本项目使用 conda 环境 `dlexer`，位于 `D:\CODER\python\anaconda\envs\dlexer`。Python 和其他依赖独立；为节省空间，`torch`、`torchvision`、`torchgen` 和 `functorch` 通过 Windows junction 共享 `ai` 环境中的文件。两个包的版本元数据保存在 `dlexer` 中。
 
-| 项目 | 值 |
-| --- | --- |
-| 操作系统 | Windows |
-| GPU | NVIDIA GeForce RTX 4060 Laptop GPU，8GB，compute capability 8.9 |
-| 显卡驱动 | 595.79（报告 CUDA 13.2） |
-| CUDA 编译器 | `D:\SDK\CUDA\v13.0\bin\nvcc.exe`，CUDA 13.0 |
-| Python | `D:\CODER\python\anaconda\envs\ai\python.exe`，Python 3.11.15 |
-| 可用磁盘 | D: 约 224GB |
+**维护边界：** `ai` 中的 PyTorch 更新或卸载会影响本项目，也可能让 `dlexer` 的版本元数据过时。不要在任一环境中卸载、覆盖或升级这两个共享包，直到先解除 junction 并确认后续安装方案。`pip check` 不能证明共享文件仍与元数据一致；每次 `ai` 的 PyTorch 变动后需重新验证导入、版本和 GPU。
 
-## 包版本
+## 在另一台机器创建独立环境
 
-`ai` 是共享环境；下表记录本仓库依赖的关键版本，完整快照见 `docs/ai-env-snapshot.txt`。
-
-| 包 | 变更前 | 当前 |
-| --- | --- | --- |
-| torch | 2.12.0+cpu | 2.14.1+cu130 |
-| torchvision | 0.27.0 | 0.29.1+cu130 |
-| numpy | 2.4.6 | 2.4.6 |
-| pytest | 9.0.3 | 9.0.3 |
-| transformers | 5.9.0 | 5.9.0（可选，仅作现有环境记录） |
-
-## 激活环境
+下面的命令用于**尚无 junction 的新环境**。本机已有的 `dlexer` 不应直接执行 PyTorch 安装命令，以免影响共享文件。
 
 ```powershell
-conda activate ai
-python --version
-
-# 或直接使用绝对路径
-& 'D:\CODER\python\anaconda\envs\ai\python.exe' --version
+conda create -n dlexer python=3.11 pip
+conda activate dlexer
+python -m pip install --index-url https://download.pytorch.org/whl/cu130 "torch==2.14.1+cu130" "torchvision==0.29.1+cu130"
+python -m pip install -e ".[dev]"
+python -m pip check
 ```
 
-本仓库不创建 venv，也不新建 conda 环境。原因：
+PyTorch wheel 自带运行所需的 CUDA 库；显卡驱动必须正常。已装的 CUDA Toolkit 可以保留，本项目不需要安装编译器、MSVC 或 ninja。版本与索引应以 [PyTorch 官方安装说明](https://pytorch.org/get-started/locally/)为准。
 
-- 用户明确要求复用现有 `ai` 环境，不为学习仓库做隔离；
-- 所有课程、测试和 CUDA 检查在同一解释器下运行，便于排查环境问题；
-- 代价是环境变更会影响其他使用 `ai` 的项目，因此每次变更都要记录并验证。
+## VS Code
 
-## 本仓库安装
+用 VS Code 打开 `D:\AI\projects\DLexer` 文件夹。项目设置指定了本机 `dlexer` 解释器并启用 pytest；首次打开后在状态栏确认解释器为 `dlexer`。若没有自动选择，执行“Python: Select Interpreter”，选择 `D:\CODER\python\anaconda\envs\dlexer\python.exe`。
+
+打开 Python 文件后按 F5，可用“运行当前 Python 文件”调试；测试面板可发现 `tests/`。终端内如果 `conda activate dlexer` 不可用，可直接使用解释器绝对路径。
+
+## 验证
 
 ```powershell
-$py = 'D:\CODER\python\anaconda\envs\ai\python.exe'
-& $py -m pip install -e . --no-deps
+python -m pip check
+python -m dlexer doctor --require-gpu --require-network
+python -m dlexer smoke --device cuda
+python -m pytest -q
+python -m ruff check .
+python lessons\00_foundations\lab.py
 ```
 
-使用 `--no-deps` 是有意的：torch/torchvision 已由 CUDA 专用索引安装，不能让 pip 在解析时把它们替换成 PyPI 的 CPU 版本。
-
-## CUDA 版 torch 安装
-
-```powershell
-$py = 'D:\CODER\python\anaconda\envs\ai\python.exe'
-& $py -m pip install --upgrade `
-  --index-url https://download.pytorch.org/whl/cu130 `
-  "torch==2.14.1+cu130" "torchvision==0.29.1+cu130"
-```
-
-验证：
-
-```powershell
-& $py -c "import torch, torchvision; print(torch.__version__, torch.version.cuda); print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0)); print(torchvision.__version__)"
-& $py -m dlexer doctor --require-gpu
-```
-
-## 回滚
-
-如果 CUDA 版安装导致与本项目无关的依赖问题，可回滚到升级前版本：
-
-```powershell
-& $py -m pip install --force-reinstall torch==2.12.0 torchvision==0.27.0
-& $py -m pip uninstall -y dlexer ruff
-```
-
-回滚后 GPU 测试会自动跳过，`dlexer doctor` 会报告 CUDA 不可用。
-
-## 依赖一致性
-
-安装后运行：
-
-```powershell
-& $py -m pip check
-```
-
-2026-11-10 安装 cu130 版本后的结果：`No broken requirements found.` 如果以后出现与本项目无关的既有冲突，只记录，不擅自修复。torch / torchvision 的版本关系由 PyTorch 官方索引保证；本项目使用 `torch>=2.14,<3`、`torchvision>=0.29,<1` 的宽松下界，实际值以本机快照为准。
-
-同一次验证的关键结果：
-
-- `torch.cuda.is_available() == True`，识别 RTX 4060 Laptop，compute capability 8.9，bf16 支持；
-- `torch.backends.cudnn.version() == 92400`（9.24.0）；
-- `pytest -q` 通过（GPU 用例实际运行），网络用例默认跳过；
-- `dlexer doctor --require-gpu --require-network` 退出码 0，仅保留 MSVC/ninja 两条扩展工具链警告。
-
-## 已知限制
-
-- 自定义 CUDA 扩展需要 MSVC Build Tools + `cl.exe` 在 PATH；当前未安装，见 [cuda.md](cuda.md)。
-- 8GB 显存适合小模型与课程实验；batch size 需要按实验记录调整。
-- `ai` 环境中的 transformers 不是本仓库硬依赖，后续课程如使用会再单独记录。
+GPU 故障排查见 [cuda.md](cuda.md)。需要修改依赖时先说明用途和影响；不使用 `ai` 的卸载或回滚命令。

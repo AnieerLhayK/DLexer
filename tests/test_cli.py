@@ -10,9 +10,11 @@ def test_doctor_json_without_network(capsys) -> None:
     captured = capsys.readouterr()
     assert code == 0, captured.err + captured.out
     report = json.loads(captured.out)
-    assert report["schema_version"] == 1
+    assert report["schema_version"] == 2
     assert report["ok"] is True
-    assert {"python", "packages", "cuda", "toolchain", "gpu_smoke", "network"} <= set(report)
+    assert {"python", "packages", "cuda", "gpu_smoke", "network"} <= set(report)
+    assert "toolchain" not in report
+    assert not any("MSVC" in warning or "ninja" in warning for warning in report["warnings"])
     assert report["network"] == []
 
 
