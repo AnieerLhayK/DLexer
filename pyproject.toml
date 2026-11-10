@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dlexer"
+version = "0.1.0"
+description = "Personal PyTorch learning workspace: classic architectures, checks and CUDA connectivity"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "AnieerLhayK" }]
+dependencies = [
+  "torch>=2.14,<3",
+  "torchvision>=0.29,<1",
+  "numpy>=1.26",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8",
+  "ruff>=0.6",
+]
+
+[project.scripts]
+dlexer = "dlexer.cli:main"
+
+[project.urls]
+Repository = "https://github.com/AnieerLhayK/DLexer"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra --import-mode=importlib"
+testpaths = ["tests"]
+pythonpath = ["src"]
+markers = [
+  "gpu: requires a working CUDA device",
+  "network: requires outbound network access",
+  "slow: long-running check",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+extend-exclude = ["data", "runs", "experiments"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["dlexer"]
